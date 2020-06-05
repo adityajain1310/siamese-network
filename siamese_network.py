@@ -213,9 +213,135 @@ image2 = tr_imgPairs[:, 1]
 siamese_network.fit([image1, image2], tr_targets, validation_split=.25, batch_size=128, verbose=2, 
                     nb_epoch = 10)
 
+model_json = siamese_network.to_json()
+with open("siamese_network.json", "w") as json_file:
+    json_file.write(model_json)
+    
+siamese_network.save_weights("siamese_network.h5")
+
+# how to load model and evaluate
+'''json_file = open('model.json', 'r')
+loaded_model_json = json_file.read()
+json_file.close()
+loaded_model = model_from_json(loaded_model_json)
+# load weights into new model
+loaded_model.load_weights("model.h5")
+print("Loaded model from disk")
+ 
+# evaluate loaded model on test data
+loaded_model.compile(loss='binary_crossentropy', optimizer='rmsprop', metrics=['accuracy'])
+score = loaded_model.evaluate(X, Y, verbose=0)
+print("%s: %.2f%%" % (loaded_model.metrics_names[1], score[1]*100))'''
+
 pred = siamese_network.predict([ts_imgPairs[:, 0], ts_imgPairs[:, 1]])
 
-def compute_accuracy(predictions, labels):
-    return labels[predictions.ravel() 
-                  
-# print( compute_accuracy(pred, tr_targets) )
+for p in range(len(pred)):
+    if(pred[p] > 0.5):
+        pred[p] = 1
+    else:
+        pred[p] = 0
+        
+pred_tr = siamese_network.predict([tr_imgPairs[:, 0], tr_imgPairs[:, 1]])
+pred_tr = (pred_tr > 0.5)
+
+from sklearn.metrics import confusion_matrix
+cm = confusion_matrix(ts_targets, pred)
+accuracy = (cm[0][0] + cm[1][1])*100/(cm[0][0]+cm[0][1]+cm[1][0]+cm[1][1])
+
+cm1 = confusion_matrix(tr_targets, pred_tr)
+accuracy_tr = (cm1[0][0] + cm1[1][1])*100/(cm1[0][0]+cm1[0][1]+cm1[1][0]+cm1[1][1])
+
+
+adi1 = cv2.imread('adi1.jpg')
+adi2 = cv2.imread('Adi2.jpg')
+adi3 = cv2.imread('Adi3.jpg')
+dhruv = cv2.imread('Dhruv.jpg')
+ran = cv2.imread('ran.jpg')
+
+adi1 = cv2.cvtColor(adi1, cv2.COLOR_BGR2GRAY)
+adi1 = cv2.resize(adi1, (98, 98))
+adi1 = adi1.reshape(1, adi1.shape[0], adi1.shape[1], 1)
+
+
+adi2 = cv2.cvtColor(adi2, cv2.COLOR_BGR2GRAY)
+adi2 = cv2.resize(adi2, (98, 98))
+adi2 = adi2.reshape(1, adi2.shape[0], adi2.shape[1], 1)
+
+adi3 = cv2.cvtColor(adi3, cv2.COLOR_BGR2GRAY)
+adi3 = cv2.resize(adi3, (98, 98))
+adi3 = adi3.reshape(1, adi3.shape[0], adi3.shape[1], 1)
+
+dhruv = cv2.cvtColor(dhruv, cv2.COLOR_BGR2GRAY)
+dhruv = cv2.resize(dhruv, (98, 98))
+dhruv = dhruv.reshape(1, dhruv.shape[0], dhruv.shape[1], 1)
+
+ran = cv2.cvtColor(ran, cv2.COLOR_BGR2GRAY)
+ran = cv2.resize(ran, (98, 98))
+ran = ran.reshape(1, ran.shape[0], ran.shape[1], 1)
+
+p = siamese_network.predict([adi1, adi2])
+q = siamese_network.predict([adi2, dhruv])
+q = siamese_network.predict([dhruv, adi1])
+
+
+
+
+
+
+
+
+
+
+
+
+
+def prepare_data(sample_size):
+    count = 0    
+    dim1 = 98
+    dim2 = 98
+    img_pair = np.zeros([sample_size, 2, dim1, dim2])
+    target = np.zeros([sample_size, 1])
+    index_list = []
+    for fx in range(sample_size):
+        index1 = 0
+        index2 = 0
+        inx = []
+        while index1 == index2:
+            index1 = np.random.randint(14)
+            index2 = np.random.randint(14)
+        if(index1>=1 and index1<=3 and index2>=1 and index2<=3):
+            target[count] = 1
+        elif(index1>=5 and index1<=7 and index2>=5 and index2<=7):
+            target[count] = 1
+        elif(index1>=8 and index1<=10 and index2>=8 and index2<=10):
+            target[count] = 1
+        elif(index1>=11 and index1<=13 and index2>=11 and index2<=13):
+            target[count] = 1
+        else:
+            target[count] = 0
+        inx.append(index1)
+        inx.append(index2)
+        index_list.append(inx)
+        image1 = cv2.imread('testdata/' + str(index1) + '.jpg')
+        image2 = cv2.imread('testdata/' + str(index2) + '.jpg')
+            
+        gray1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
+        gray2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
+        
+        gray1 = cv2.resize(gray1, (98, 98))
+        gray2 = cv2.resize(gray2, (98, 98))
+        
+        img_pair[count, 0, :, :] = gray1
+        img_pair[count, 1, :, :] = gray2
+
+        count += 1
+    return img_pair, index_list, target
+
+img_pr, index_list, target = prepare_data(100)
+img_pr = img_pr.reshape(100, 2, 98, 98, 1)
+
+result = siamese_network.predict([img_pr[:, 0], img_pr[:, 1]])
+result = (result > 0.5)
+
+cm2 = confusion_matrix(target, result)
+accuracy_res = (cm2[0][0] + cm2[1][1])*100/(cm2[0][0]+cm2[0][1]+cm2[1][0]+cm2[1][1])
